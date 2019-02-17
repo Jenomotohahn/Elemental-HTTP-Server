@@ -6,6 +6,7 @@ const querystring = require("querystring");
 const server = http.createServer((req, res) => {
   //this is destructuring = this equals url = req.url
   console.log(req.headers);
+  console.log(req.method);
   const { url } = req;
   console.log(url);
   if (req.method === "GET") {
@@ -50,7 +51,6 @@ const server = http.createServer((req, res) => {
       console.log("Favicon Missing!");
     }
   } else if (req.method === "POST") {
-    let newElemArr = [];
     if (url === "/elements") {
       req.on("data", data => {
         console.log(data.toString());
@@ -72,8 +72,10 @@ const server = http.createServer((req, res) => {
             <p><a href="/">back</a></p>
           </body>
         </html>`;
+
         const filePath =
           "./public/element/" + dataObj.elementName.toLowerCase() + ".html";
+
         fs.writeFile(filePath, elemTemp, err => {
           if (err) {
             console.log(err);
@@ -81,33 +83,52 @@ const server = http.createServer((req, res) => {
             console.log("NEW FILE CREATED!");
           }
         });
-        fs.readdir(__dirname + "/public/element", (err, files) => {
-          if (err) {
-            console.log(err);
-          } else {
-            files.map(x => {
-              newElemArr.push(x.split(".")[0].toLowerCase());
-            });
-          }
-
-          fs.writeFile("./public/index.html", newElementIndex(), err => {
-            if (err) {
-              console.log(err);
-            } else {
-              console.log("INDEX FILE UPDATED!");
-            }
-          });
+        createIndex();
+      });
+    }
+    req.on("end", () => {
+      console.log("request ended");
+    });
+    res.end("Data received, Thank you!");
+  } else if (req.method === "DELETE") {
+    fs.exists(`./public/element${url}`, function(exists) {
+      if (exists) {
+        console.log("File exists and will be deleted!");
+        fs.unlinkSync("./public/element" + url);
+        createIndex();
+      }
+    });
+    res.end("Data deleted");
+  }
+  const createIndex = function() {
+    let newElemArr = [];
+    fs.readdir(__dirname + "/public/element", (err, files) => {
+      if (err) {
+        console.log(err);
+      } else {
+        files.map(x => {
+          newElemArr.push(x.split(".")[0].toLowerCase());
         });
+      }
 
-        const newElementIndex = function() {
-          let listOfElem = "";
-          newElemArr.forEach(x => {
-            listOfElem += `<li>
+      fs.writeFile("./public/index.html", newElementIndex(), err => {
+        if (err) {
+          console.log(err);
+        } else {
+          console.log("INDEX FILE UPDATED!");
+        }
+      });
+    });
+
+    const newElementIndex = function() {
+      let listOfElem = "";
+      newElemArr.forEach(x => {
+        listOfElem += `<li>
         <a href="/${x}.html">${x.charAt(0).toUpperCase() +
-              x.slice(1, x.length)}</a>
+          x.slice(1, x.length)}</a>
       </li>\n`;
-          });
-          return `<!DOCTYPE html>
+      });
+      return `<!DOCTYPE html>
           <html lang="en">
           <head>
            <meta charset="UTF-8" />
@@ -122,10 +143,8 @@ const server = http.createServer((req, res) => {
          <ol>${listOfElem}</ol>
          </body>
         </html>`;
-        };
-      });
-    }
-  }
+    };
+  };
 });
 
 server.listen(8080, () => {
